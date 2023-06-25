@@ -23,13 +23,13 @@ def pre_check() -> bool:
 
 def pre_start() -> bool:
     if not is_image(roop.globals.source_path):
-        update_status('Select an image for source path.', NAME)
+        update_status('Выберите изображение для замены.', NAME)
         return False
     elif not get_one_face(cv2.imread(roop.globals.source_path)):
-        update_status('No face in source path detected.', NAME)
+        update_status('Лиц не обнаружено. Попробуйте другой образец', NAME)
         return False
     if not is_image(roop.globals.target_path) and not is_video(roop.globals.target_path):
-        update_status('Select an image or video for target path.', NAME)
+        update_status('Выберите изображение или видео.', NAME)
         return False
     return True
 

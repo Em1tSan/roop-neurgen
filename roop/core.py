@@ -20,7 +20,6 @@ import tensorflow
 import roop.globals
 import roop.metadata
 import roop.ui as ui
-from roop.predicter import predict_image, predict_video
 from roop.processors.frame.core import get_frame_processors_modules
 from roop.utilities import has_image_extension, is_image, is_video, detect_fps, create_video, extract_frames, get_temp_frame_paths, restore_audio, create_temp, move_temp, clean_temp, normalize_output_path
 
@@ -34,20 +33,21 @@ warnings.filterwarnings('ignore', category=UserWarning, module='torchvision')
 def parse_args() -> None:
     signal.signal(signal.SIGINT, lambda signal_number, frame: destroy())
     program = argparse.ArgumentParser()
-    program.add_argument('-s', '--source', help='select an source image', dest='source_path')
-    program.add_argument('-t', '--target', help='select an target image or video', dest='target_path')
-    program.add_argument('-o', '--output', help='select output file or directory', dest='output_path')
-    program.add_argument('--frame-processor', help='pipeline of frame processors', dest='frame_processor', default=['face_swapper'], choices=['face_swapper', 'face_enhancer'], nargs='+')
-    program.add_argument('--keep-fps', help='keep original fps', dest='keep_fps', action='store_true', default=False)
-    program.add_argument('--keep-audio', help='keep original audio', dest='keep_audio', action='store_true', default=True)
-    program.add_argument('--keep-frames', help='keep temporary frames', dest='keep_frames', action='store_true', default=False)
-    program.add_argument('--many-faces', help='process every face', dest='many_faces', action='store_true', default=False)
-    program.add_argument('--video-encoder', help='adjust output video encoder', dest='video_encoder', default='libx264', choices=['libx264', 'libx265', 'libvpx-vp9'])
-    program.add_argument('--video-quality', help='adjust output video quality', dest='video_quality', type=int, default=18, choices=range(52), metavar='[0-51]')
-    program.add_argument('--max-memory', help='maximum amount of RAM in GB', dest='max_memory', type=int, default=suggest_max_memory())
-    program.add_argument('--execution-provider', help='execution provider', dest='execution_provider', default=['cpu'], choices=suggest_execution_providers(), nargs='+')
-    program.add_argument('--execution-threads', help='number of execution threads', dest='execution_threads', type=int, default=suggest_execution_threads())
+    program.add_argument('-s', '--source', help='выберите исходное изображение', dest='source_path')
+    program.add_argument('-t', '--target', help='выберите целевое изображение или видео', dest='target_path')
+    program.add_argument('-o', '--output', help='выберите выходной файл или директорию', dest='output_path')
+    program.add_argument('--frame-processor', help='последовательность обработчиков кадров', dest='frame_processor', default=['face_swapper'], choices=['face_swapper', 'face_enhancer'], nargs='+')
+    program.add_argument('--keep-fps', help='сохранить исходный fps', dest='keep_fps', action='store_true', default=False)
+    program.add_argument('--keep-audio', help='сохранить исходный звук', dest='keep_audio', action='store_true', default=True)
+    program.add_argument('--keep-frames', help='сохранить временные кадры', dest='keep_frames', action='store_true', default=False)
+    program.add_argument('--many-faces', help='обработать каждое лицо', dest='many_faces', action='store_true', default=False)
+    program.add_argument('--video-encoder', help='настроить кодек выходного видео', dest='video_encoder', default='libx264', choices=['libx264', 'libx265', 'libvpx-vp9'])
+    program.add_argument('--video-quality', help='настроить качество выходного видео', dest='video_quality', type=int, default=18, choices=range(52), metavar='[0-51]')
+    program.add_argument('--max-memory', help='максимальный объем оперативной памяти в ГБ', dest='max_memory', type=int, default=suggest_max_memory())
+    program.add_argument('--execution-provider', help='провайдер исполнения', dest='execution_provider', default=['cpu'], choices=suggest_execution_providers(), nargs='+')
+    program.add_argument('--execution-threads', help='количество потоков исполнения', dest='execution_threads', type=int, default=suggest_execution_threads())
     program.add_argument('-v', '--version', action='version', version=f'{roop.metadata.name} {roop.metadata.version}')
+
 
     # register deprecated args
     program.add_argument('-f', '--face', help=argparse.SUPPRESS, dest='source_path_deprecated')
@@ -72,26 +72,27 @@ def parse_args() -> None:
     roop.globals.execution_providers = decode_execution_providers(args.execution_provider)
     roop.globals.execution_threads = args.execution_threads
 
-    # translate deprecated args
+    ## translate deprecated args
     if args.source_path_deprecated:
-        print('\033[33mArgument -f and --face are deprecated. Use -s and --source instead.\033[0m')
+        print('\033[33mАргумент -f и --face устарели. Используйте -s и --source вместо этого.\033[0m')
         roop.globals.source_path = args.source_path_deprecated
         roop.globals.output_path = normalize_output_path(args.source_path_deprecated, roop.globals.target_path, args.output_path)
     if args.cpu_cores_deprecated:
-        print('\033[33mArgument --cpu-cores is deprecated. Use --execution-threads instead.\033[0m')
+        print('\033[33mАргумент --cpu-cores устарел. Используйте --execution-threads вместо этого.\033[0m')
         roop.globals.execution_threads = args.cpu_cores_deprecated
     if args.gpu_vendor_deprecated == 'apple':
-        print('\033[33mArgument --gpu-vendor apple is deprecated. Use --execution-provider coreml instead.\033[0m')
+        print('\033[33mАргумент --gpu-vendor apple устарел. Используйте --execution-provider coreml вместо этого.\033[0m')
         roop.globals.execution_providers = decode_execution_providers(['coreml'])
     if args.gpu_vendor_deprecated == 'nvidia':
-        print('\033[33mArgument --gpu-vendor nvidia is deprecated. Use --execution-provider cuda instead.\033[0m')
+        print('\033[33mАргумент --gpu-vendor nvidia устарел. Используйте --execution-provider cuda вместо этого.\033[0m')
         roop.globals.execution_providers = decode_execution_providers(['cuda'])
     if args.gpu_vendor_deprecated == 'amd':
-        print('\033[33mArgument --gpu-vendor amd is deprecated. Use --execution-provider cuda instead.\033[0m')
+        print('\033[33mАргумент --gpu-vendor amd устарел. Используйте --execution-provider cuda вместо этого.\033[0m')
         roop.globals.execution_providers = decode_execution_providers(['rocm'])
     if args.gpu_threads_deprecated:
-        print('\033[33mArgument --gpu-threads is deprecated. Use --execution-threads instead.\033[0m')
+        print('\033[33mАргумент --gpu-threads устарел. Используйте --execution-threads вместо этого.\033[0m')
         roop.globals.execution_threads = args.gpu_threads_deprecated
+
 
 
 def encode_execution_providers(execution_providers: List[str]) -> List[str]:
@@ -118,7 +119,7 @@ def suggest_execution_threads() -> int:
         return 1
     if 'ROCMExecutionProvider' in roop.globals.execution_providers:
         return 1
-    return 8
+    return 4
 
 
 def limit_resources() -> None:
@@ -147,10 +148,14 @@ def release_resources() -> None:
 
 def pre_check() -> bool:
     if sys.version_info < (3, 9):
-        update_status('Python version is not supported - please upgrade to 3.9 or higher.')
+        update_status('Версия Python не поддерживается. Установите версию 3.10.')
         return False
+    if sys.version_info > (3, 11):
+        update_status('Версия Python не поддерживается. Установите версию 3.10.')
+        return False
+    
     if not shutil.which('ffmpeg'):
-        update_status('ffmpeg is not installed.')
+        update_status('ffmpeg не установлен либо не указан в PATH.')
         return False
     return True
 
@@ -167,54 +172,50 @@ def start() -> None:
             return
     # process image to image
     if has_image_extension(roop.globals.target_path):
-        if predict_image(roop.globals.target_path):
-            destroy()
         shutil.copy2(roop.globals.target_path, roop.globals.output_path)
         for frame_processor in get_frame_processors_modules(roop.globals.frame_processors):
-            update_status('Progressing...', frame_processor.NAME)
+            update_status('Обработка...', frame_processor.NAME)
             frame_processor.process_image(roop.globals.source_path, roop.globals.output_path, roop.globals.output_path)
             release_resources()
         if is_image(roop.globals.target_path):
-            update_status('Processing to image succeed!')
+            update_status('Обработка изображения закончена!')
         else:
-            update_status('Processing to image failed!')
+            update_status('Обрабокта изображения провалена!')
         return
     # process image to videos
-    if predict_video(roop.globals.target_path):
-        destroy()
-    update_status('Creating temp resources...')
+    update_status('Создание временных ресурсов...')
     create_temp(roop.globals.target_path)
-    update_status('Extracting frames...')
+    update_status('Извлечение кадров...')
     extract_frames(roop.globals.target_path)
     temp_frame_paths = get_temp_frame_paths(roop.globals.target_path)
     for frame_processor in get_frame_processors_modules(roop.globals.frame_processors):
-        update_status('Progressing...', frame_processor.NAME)
+        update_status('Обработка...', frame_processor.NAME)
         frame_processor.process_video(roop.globals.source_path, temp_frame_paths)
         release_resources()
     # handles fps
     if roop.globals.keep_fps:
-        update_status('Detecting fps...')
+        update_status('Определние FPS...')
         fps = detect_fps(roop.globals.target_path)
-        update_status(f'Creating video with {fps} fps...')
+        update_status(f'Создание видео с {fps} fps...')
         create_video(roop.globals.target_path, fps)
     else:
-        update_status('Creating video with 30.0 fps...')
+        update_status('Создание видео с 30.0 fps...')
         create_video(roop.globals.target_path)
     # handle audio
     if roop.globals.keep_audio:
         if roop.globals.keep_fps:
-            update_status('Restoring audio...')
+            update_status('Восстановление аудио...')
         else:
-            update_status('Restoring audio might cause issues as fps are not kept...')
+            update_status('Восстановление аудио может вызвать проблемы, так как FPS не соханился...')
         restore_audio(roop.globals.target_path, roop.globals.output_path)
     else:
         move_temp(roop.globals.target_path, roop.globals.output_path)
     # clean and validate
     clean_temp(roop.globals.target_path)
     if is_video(roop.globals.target_path):
-        update_status('Processing to video succeed!')
+        update_status('Обработка видео закончена!')
     else:
-        update_status('Processing to video failed!')
+        update_status('Обработка видео не удалась!')
 
 
 def destroy() -> None:

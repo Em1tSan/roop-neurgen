@@ -9,7 +9,6 @@ import roop.globals
 import roop.metadata
 from roop.face_analyser import get_one_face
 from roop.capturer import get_video_frame, get_video_frame_total
-from roop.predicter import predict_frame
 from roop.processors.frame.core import get_frame_processors_modules
 from roop.utilities import is_image, is_video, resolve_relative_path
 
@@ -60,44 +59,44 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     target_label = ctk.CTkLabel(root, text=None)
     target_label.place(relx=0.6, rely=0.1, relwidth=0.3, relheight=0.25)
 
-    source_button = ctk.CTkButton(root, text='Select a face', cursor='hand2', command=lambda: select_source_path())
+    source_button = ctk.CTkButton(root, text='Выберите лицо', cursor='hand2', command=lambda: select_source_path())
     source_button.place(relx=0.1, rely=0.4, relwidth=0.3, relheight=0.1)
 
-    target_button = ctk.CTkButton(root, text='Select a target', cursor='hand2', command=lambda: select_target_path())
-    target_button.place(relx=0.6, rely=0.4, relwidth=0.3, relheight=0.1)
+    target_button = ctk.CTkButton(root, text='Выберите Видео или Изображение', cursor='hand2', command=lambda: select_target_path())
+    target_button.place(relx=0.5, rely=0.4, relwidth=0.4, relheight=0.1)
 
     keep_fps_value = ctk.BooleanVar(value=roop.globals.keep_fps)
-    keep_fps_checkbox = ctk.CTkSwitch(root, text='Keep fps', variable=keep_fps_value, cursor='hand2', command=lambda: setattr(roop.globals, 'keep_fps', not roop.globals.keep_fps))
+    keep_fps_checkbox = ctk.CTkSwitch(root, text='Оставить родной FPS', variable=keep_fps_value, cursor='hand2', command=lambda: setattr(roop.globals, 'keep_fps', not roop.globals.keep_fps))
     keep_fps_checkbox.place(relx=0.1, rely=0.6)
 
     keep_frames_value = ctk.BooleanVar(value=roop.globals.keep_frames)
-    keep_frames_switch = ctk.CTkSwitch(root, text='Keep frames', variable=keep_frames_value, cursor='hand2', command=lambda: setattr(roop.globals, 'keep_frames', keep_frames_value.get()))
+    keep_frames_switch = ctk.CTkSwitch(root, text='Оставить папку с кадрами', variable=keep_frames_value, cursor='hand2', command=lambda: setattr(roop.globals, 'keep_frames', keep_frames_value.get()))
     keep_frames_switch.place(relx=0.1, rely=0.65)
 
     keep_audio_value = ctk.BooleanVar(value=roop.globals.keep_audio)
-    keep_audio_switch = ctk.CTkSwitch(root, text='Keep audio', variable=keep_audio_value, cursor='hand2', command=lambda: setattr(roop.globals, 'keep_audio', keep_audio_value.get()))
+    keep_audio_switch = ctk.CTkSwitch(root, text='Оставить оригинальное аудио', variable=keep_audio_value, cursor='hand2', command=lambda: setattr(roop.globals, 'keep_audio', keep_audio_value.get()))
     keep_audio_switch.place(relx=0.6, rely=0.6)
 
     many_faces_value = ctk.BooleanVar(value=roop.globals.many_faces)
-    many_faces_switch = ctk.CTkSwitch(root, text='Many faces', variable=many_faces_value, cursor='hand2', command=lambda: setattr(roop.globals, 'many_faces', many_faces_value.get()))
+    many_faces_switch = ctk.CTkSwitch(root, text='Заменить все лица в кадре', variable=many_faces_value, cursor='hand2', command=lambda: setattr(roop.globals, 'many_faces', many_faces_value.get()))
     many_faces_switch.place(relx=0.6, rely=0.65)
 
-    start_button = ctk.CTkButton(root, text='Start', cursor='hand2', command=lambda: select_output_path(start))
+    start_button = ctk.CTkButton(root, text='Старт', cursor='hand2', command=lambda: select_output_path(start))
     start_button.place(relx=0.15, rely=0.75, relwidth=0.2, relheight=0.05)
 
-    stop_button = ctk.CTkButton(root, text='Destroy', cursor='hand2', command=lambda: destroy())
+    stop_button = ctk.CTkButton(root, text='Прервать', cursor='hand2', command=lambda: destroy())
     stop_button.place(relx=0.4, rely=0.75, relwidth=0.2, relheight=0.05)
 
-    preview_button = ctk.CTkButton(root, text='Preview', cursor='hand2', command=lambda: toggle_preview())
+    preview_button = ctk.CTkButton(root, text='Предпросмотр', cursor='hand2', command=lambda: toggle_preview())
     preview_button.place(relx=0.65, rely=0.75, relwidth=0.2, relheight=0.05)
 
     status_label = ctk.CTkLabel(root, text=None, justify='center')
     status_label.place(relx=0.1, rely=0.9, relwidth=0.8)
 
-    donate_label = ctk.CTkLabel(root, text='Become a GitHub Sponsor', justify='center', cursor='hand2')
+    donate_label = ctk.CTkLabel(root, text='Мой Telegram канал', justify='center', cursor='hand2')
     donate_label.place(relx=0.1, rely=0.95, relwidth=0.8)
     donate_label.configure(text_color=ctk.ThemeManager.theme.get('RoopDonate').get('text_color'))
-    donate_label.bind('<Button>', lambda event: webbrowser.open('https://github.com/sponsors/s0md3v'))
+    donate_label.bind('<Button>', lambda event: webbrowser.open('https://t.me/neurogen_news'))
 
     return root
 
@@ -129,7 +128,7 @@ def select_source_path() -> None:
     global RECENT_DIRECTORY_SOURCE
 
     PREVIEW.withdraw()
-    source_path = ctk.filedialog.askopenfilename(title='select an source image', initialdir=RECENT_DIRECTORY_SOURCE)
+    source_path = ctk.filedialog.askopenfilename(title='выберите изображение с лицом', initialdir=RECENT_DIRECTORY_SOURCE)
     if is_image(source_path):
         roop.globals.source_path = source_path
         RECENT_DIRECTORY_SOURCE = os.path.dirname(roop.globals.source_path)
@@ -144,7 +143,7 @@ def select_target_path() -> None:
     global RECENT_DIRECTORY_TARGET
 
     PREVIEW.withdraw()
-    target_path = ctk.filedialog.askopenfilename(title='select an target image or video', initialdir=RECENT_DIRECTORY_TARGET)
+    target_path = ctk.filedialog.askopenfilename(title='выберите объект где будет замена', initialdir=RECENT_DIRECTORY_TARGET)
     if is_image(target_path):
         roop.globals.target_path = target_path
         RECENT_DIRECTORY_TARGET = os.path.dirname(roop.globals.target_path)
@@ -218,8 +217,7 @@ def init_preview() -> None:
 def update_preview(frame_number: int = 0) -> None:
     if roop.globals.source_path and roop.globals.target_path:
         temp_frame = get_video_frame(roop.globals.target_path, frame_number)
-        if predict_frame(temp_frame):
-            quit()
+
         for frame_processor in get_frame_processors_modules(roop.globals.frame_processors):
             temp_frame = frame_processor.process_frame(
                 get_one_face(cv2.imread(roop.globals.source_path)),
