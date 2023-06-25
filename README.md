@@ -9,6 +9,45 @@
 
 [Мой телеграм канал](https://t.me/neurogen_news)
 
+## Инструкция для Nvidia:
+
+Требования к системе:
+1) Установленный Python 3.10 ( https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe )
+2) Установленный Git ( https://github.com/git-for-windows/git/releases/download/v2.41.0.windows.1/Git-2.41.0-64-bit.exe )
+3) Установленная Visual Studio (https://visualstudio.microsoft.com/ru/vs/community/)
+4) Установленный CUDA Toolkit 11.8 (https://developer.nvidia.com/cuda-11-8-0-download-archive)
+5) Установленные CUDNN
+6) Установленный ffmpeg (https://github.com/BtbN/FFmpeg-Builds/releases)
+
+Подготовка с нуля (если вы раньше не работали с нейронками):
+Выполните пункты с 1 по 4
+https://pikabu.ru/story/prodolzhenie_posta_polzovatel_sozdal_skript_kotoryiy_pozvolyaet_sozdavat_deepfake_v_odin_klik_kachestvo_kak_po_mne_otlichnoe_i_prevoskhodit_predyidushchie_resheniya_10282774
+Затем следующие шаги:
+
+- Установите Cuda Toolkit 11.8: https://developer.nvidia.com/cuda-11-8-0-download-archive
+- Скачайте CUDNN: https://developer.nvidia.com/downloads/compute/cudnn/secure/8.9.1/local_installers/11.8/cudnn-windows-x86_64-8.9.1.23_cuda11-archive.zip/
+После чего распакуйте архив, откройте папку bin и скопируйте файлы в папку C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin
+
+Запуск:
+
+- Внесите под себя правки в файле start_cuda.bat и запустите его. 
+
+## Инструкция для AMD и Intel:
+
+Требования к системе:
+1) Установленный Python 3.10 ( https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe )
+2) Установленный Git ( https://github.com/git-for-windows/git/releases/download/v2.41.0.windows.1/Git-2.41.0-64-bit.exe )
+3) Установленная Visual Studio (https://visualstudio.microsoft.com/ru/vs/community/)
+4) Установленный ffmpeg (https://github.com/BtbN/FFmpeg-Builds/releases)
+
+Подготовка с нуля (если вы раньше не работали с нейронками):
+Выполните пункты с 1 по 4
+https://pikabu.ru/story/prodolzhenie_posta_polzovatel_sozdal_skript_kotoryiy_pozvolyaet_sozdavat_deepfake_v_odin_klik_kachestvo_kak_po_mne_otlichnoe_i_prevoskhodit_predyidushchie_resheniya_10282774
+
+Запуск:
+
+- Внесите под себя правки в файле start_dml.bat и запустите его. 
+
 ## EN:
 
 Take a video and replace the face in it with a face of your choice. You only need one image of the desired face. No dataset, no training.
