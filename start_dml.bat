@@ -4,7 +4,7 @@ pause
 
 python -m pip install virtualenv
 
-call install.bat
+call install_dml.bat
 
 call venv\Scripts\activate.bat
 python run.py --execution-threads 1 --execution-provider dml --max-memory 16 --video-encoder libx264 --frame-processor face_swapper
