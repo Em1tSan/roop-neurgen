@@ -12,7 +12,7 @@
 3) Установленная Visual Studio (https://visualstudio.microsoft.com/ru/vs/community/)
 4) Установленный CUDA Toolkit 11.8 (https://developer.nvidia.com/cuda-11-8-0-download-archive)
 5) Установленные CUDNN
-6) Установленный ffmpeg
+6) Установленный ffmpeg (https://github.com/BtbN/FFmpeg-Builds/releases)
 
 Подготовка с нуля (если вы раньше не работали с нейронками):
 Выполните пункты с 1 по 4
