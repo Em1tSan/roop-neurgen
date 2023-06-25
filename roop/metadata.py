@@ -1,2 +1,2 @@
-name = 'roop'
-version = '1.0.1'
+name = 'roop-gpu by Neurogen'
+version = '1.5'

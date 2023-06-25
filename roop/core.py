@@ -26,6 +26,7 @@ from roop.utilities import has_image_extension, is_image, is_video, detect_fps, 
 if 'ROCMExecutionProvider' in roop.globals.execution_providers:
     del torch
 
+
 warnings.filterwarnings('ignore', category=FutureWarning, module='insightface')
 warnings.filterwarnings('ignore', category=UserWarning, module='torchvision')
 
@@ -71,6 +72,41 @@ def parse_args() -> None:
     roop.globals.max_memory = args.max_memory
     roop.globals.execution_providers = decode_execution_providers(args.execution_provider)
     roop.globals.execution_threads = args.execution_threads
+
+    if 'CUDAExecutionProvider' in roop.globals.execution_providers:
+
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_PARALLEL
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_options.intra_op_num_threads = roop.globals.execution_threads
+        
+        roop.globals.execution_providers = [
+            ('CUDAExecutionProvider', {
+                'device_id': 0,
+                'enable_cuda_graph': 0,
+                'tunable_op_enable': 1, 
+                'tunable_op_tuning_enable': 1,
+                'cudnn_conv1d_pad_to_nc1d': 0,
+                'cudnn_conv_algo_search': 'EXHAUSTIVE',
+            })
+        ]
+
+    if 'TensorrtExecutionProvider' in roop.globals.execution_providers:
+
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_PARALLEL
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_options.intra_op_num_threads = roop.globals.execution_threads
+        
+        roop.globals.execution_providers = [
+            ('TensorrtExecutionProvider',{
+                'trt_max_partition_iterations': 2000,
+                'trt_fp16_enable': False,
+                'trt_engine_cache_enable': True,
+                'trt_engine_cache_path':'./trtcache',
+                'trt_timing_cache_enable': True
+            })]
+
 
     ## translate deprecated args
     if args.source_path_deprecated:
