@@ -11,7 +11,7 @@ set CUDA_MODULE_LOADING=LAZY
 set CUDA_PATH=venv\Lib\site-packages\torch\lib
 
 call venv\Scripts\activate.bat
-python run.py --execution-threads 8 --execution-provider cuda --max-memory 16 --video-encoder libx264 --frame-processor face_swapper
+python run.py --execution-threads 4 --execution-provider cuda --max-memory 16
 pause
 
 REM Упаковано и собрано телеграм каналом Neutogen News: https://t.me/neurogen_news
