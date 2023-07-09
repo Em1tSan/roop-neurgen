@@ -5,9 +5,9 @@
 
 Скачать портативную сборку можно тут:
 
-[Яндекс Диск](https://disk.yandex.ru/d/QYIbUb7e07enaw)
+[Яндекс Диск](https://disk.yandex.ru/d/7IUx0jAubqK7xQ)
 
-Моё облако
+[Моё облако](https://dl.neurochat-gpt.ru/index.php/s/x9q5CM7wNDEdzme)
 
 [Мой телеграм канал](https://t.me/neurogen_news)
 
