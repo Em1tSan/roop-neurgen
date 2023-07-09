@@ -1,2 +1,2 @@
-name = 'roop-neurogen'
-version = '1.5'
+name = 'roop'
+version = '1.1.0'

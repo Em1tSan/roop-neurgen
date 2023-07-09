@@ -12,6 +12,9 @@ from roop.capturer import get_video_frame, get_video_frame_total
 from roop.processors.frame.core import get_frame_processors_modules
 from roop.utilities import is_image, is_video, resolve_relative_path
 
+import cv2
+import threading
+
 ROOT = None
 ROOT_HEIGHT = 700
 ROOT_WIDTH = 600
@@ -90,6 +93,9 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     preview_button = ctk.CTkButton(root, text='Предпросмотр', cursor='hand2', command=lambda: toggle_preview())
     preview_button.place(relx=0.65, rely=0.75, relwidth=0.2, relheight=0.05)
 
+    live_button = ctk.CTkButton(root, text='Камера', cursor='hand2', command=lambda: webcam_preview())
+    live_button.place(relx=0.40, rely=0.83, relwidth=0.2, relheight=0.05)
+
     status_label = ctk.CTkLabel(root, text=None, justify='center')
     status_label.place(relx=0.1, rely=0.9, relwidth=0.8)
 
@@ -128,7 +134,7 @@ def select_source_path() -> None:
     global RECENT_DIRECTORY_SOURCE
 
     PREVIEW.withdraw()
-    source_path = ctk.filedialog.askopenfilename(title='выберите изображение с лицом', initialdir=RECENT_DIRECTORY_SOURCE)
+    source_path = ctk.filedialog.askopenfilename(title='select an source image', initialdir=RECENT_DIRECTORY_SOURCE)
     if is_image(source_path):
         roop.globals.source_path = source_path
         RECENT_DIRECTORY_SOURCE = os.path.dirname(roop.globals.source_path)
@@ -143,7 +149,7 @@ def select_target_path() -> None:
     global RECENT_DIRECTORY_TARGET
 
     PREVIEW.withdraw()
-    target_path = ctk.filedialog.askopenfilename(title='выберите объект где будет замена', initialdir=RECENT_DIRECTORY_TARGET)
+    target_path = ctk.filedialog.askopenfilename(title='select an target image or video', initialdir=RECENT_DIRECTORY_TARGET)
     if is_image(target_path):
         roop.globals.target_path = target_path
         RECENT_DIRECTORY_TARGET = os.path.dirname(roop.globals.target_path)
@@ -217,7 +223,6 @@ def init_preview() -> None:
 def update_preview(frame_number: int = 0) -> None:
     if roop.globals.source_path and roop.globals.target_path:
         temp_frame = get_video_frame(roop.globals.target_path, frame_number)
-
         for frame_processor in get_frame_processors_modules(roop.globals.frame_processors):
             temp_frame = frame_processor.process_frame(
                 get_one_face(cv2.imread(roop.globals.source_path)),
@@ -227,3 +232,51 @@ def update_preview(frame_number: int = 0) -> None:
         image = ImageOps.contain(image, (PREVIEW_MAX_WIDTH, PREVIEW_MAX_HEIGHT), Image.LANCZOS)
         image = ctk.CTkImage(image, size=image.size)
         preview_label.configure(image=image)
+        
+
+def webcam_preview():
+    if roop.globals.source_path is None:
+        # No image selected
+        return
+    
+    global preview_label, PREVIEW
+
+    cap = cv2.VideoCapture(0)  # Use index for the webcam (adjust the index accordingly if necessary)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))      
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # Set the width of the resolution
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # Set the height of the resolution
+    cap.set(cv2.CAP_PROP_FPS, 25)  # Set the frame rate of the webcam
+    PREVIEW_MAX_HEIGHT = 640
+    PREVIEW_MAX_WIDTH = 480
+
+    preview_label.configure(image=None)  # Reset the preview image before startup
+
+    PREVIEW.deiconify()  # Open preview window
+
+    frame_processors = get_frame_processors_modules(roop.globals.frame_processors)
+
+    source_image = None  # Initialize variable for the selected face image
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Select and save face image only once
+        if source_image is None and roop.globals.source_path:
+            source_image = get_one_face(cv2.imread(roop.globals.source_path))
+
+        temp_frame = frame.copy()  #Create a copy of the frame
+
+        for frame_processor in frame_processors:
+            temp_frame = frame_processor.process_frame(source_image, temp_frame)
+
+        image = cv2.cvtColor(temp_frame, cv2.COLOR_BGR2RGB)  # Convert the image to RGB format to display it with Tkinter
+        image = Image.fromarray(image)
+        image = ImageOps.contain(image, (PREVIEW_MAX_WIDTH, PREVIEW_MAX_HEIGHT), Image.LANCZOS)
+        image = ctk.CTkImage(image, size=image.size)
+        preview_label.configure(image=image)
+        ROOT.update()
+
+    cap.release()
+    PREVIEW.withdraw()  # Close preview window when loop is finished

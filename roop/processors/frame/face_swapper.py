@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Callable
 import cv2
 import insightface
 import threading
@@ -15,25 +15,6 @@ THREAD_LOCK = threading.Lock()
 NAME = 'ROOP.FACE-SWAPPER'
 
 
-def pre_check() -> bool:
-    download_directory_path = resolve_relative_path('../models')
-    conditional_download(download_directory_path, ['https://huggingface.co/henryruhs/roop/resolve/main/inswapper_128.onnx'])
-    return True
-
-
-def pre_start() -> bool:
-    if not is_image(roop.globals.source_path):
-        update_status('Выберите изображение для замены.', NAME)
-        return False
-    elif not get_one_face(cv2.imread(roop.globals.source_path)):
-        update_status('Лиц не обнаружено. Попробуйте другой образец', NAME)
-        return False
-    if not is_image(roop.globals.target_path) and not is_video(roop.globals.target_path):
-        update_status('Выберите изображение или видео.', NAME)
-        return False
-    return True
-
-
 def get_face_swapper() -> Any:
     global FACE_SWAPPER
 
@@ -42,6 +23,31 @@ def get_face_swapper() -> Any:
             model_path = resolve_relative_path('../models/inswapper_128.onnx')
             FACE_SWAPPER = insightface.model_zoo.get_model(model_path, providers=roop.globals.execution_providers)
     return FACE_SWAPPER
+
+
+def pre_check() -> bool:
+    download_directory_path = resolve_relative_path('../models')
+    conditional_download(download_directory_path, ['https://huggingface.co/henryruhs/roop/resolve/main/inswapper_128.onnx'])
+    return True
+
+
+def pre_start() -> bool:
+    if not is_image(roop.globals.source_path):
+        update_status('Select an image for source path.', NAME)
+        return False
+    elif not get_one_face(cv2.imread(roop.globals.source_path)):
+        update_status('No face in source path detected.', NAME)
+        return False
+    if not is_image(roop.globals.target_path) and not is_video(roop.globals.target_path):
+        update_status('Select an image or video for target path.', NAME)
+        return False
+    return True
+
+
+def post_process() -> None:
+    global FACE_SWAPPER
+
+    FACE_SWAPPER = None
 
 
 def swap_face(source_face: Face, target_face: Face, temp_frame: Frame) -> Frame:
@@ -61,18 +67,14 @@ def process_frame(source_face: Face, temp_frame: Frame) -> Frame:
     return temp_frame
 
 
-def process_frames(source_path: str, temp_frame_paths: List[str], progress: Any = None) -> None:
+def process_frames(source_path: str, temp_frame_paths: List[str], update: Callable[[], None]) -> None:
     source_face = get_one_face(cv2.imread(source_path))
     for temp_frame_path in temp_frame_paths:
         temp_frame = cv2.imread(temp_frame_path)
-        try:
-            result = process_frame(source_face, temp_frame)
-            cv2.imwrite(temp_frame_path, result)
-        except Exception as exception:
-            print(exception)
-            pass
-        if progress:
-            progress.update(1)
+        result = process_frame(source_face, temp_frame)
+        cv2.imwrite(temp_frame_path, result)
+        if update:
+            update()
 
 
 def process_image(source_path: str, target_path: str, output_path: str) -> None:
