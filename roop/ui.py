@@ -1,8 +1,12 @@
 import os
 import webbrowser
+import tkinter as tk
+from tkinter import ttk
 import customtkinter as ctk
 from typing import Callable, Tuple
 import cv2
+import pyvirtualcam # Import the library
+import numpy as np
 from PIL import Image, ImageOps
 
 import roop.globals
@@ -11,9 +15,6 @@ from roop.face_analyser import get_one_face
 from roop.capturer import get_video_frame, get_video_frame_total
 from roop.processors.frame.core import get_frame_processors_modules
 from roop.utilities import is_image, is_video, resolve_relative_path
-
-import cv2
-import threading
 
 ROOT = None
 ROOT_HEIGHT = 700
@@ -93,8 +94,9 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     preview_button = ctk.CTkButton(root, text='Предпросмотр', cursor='hand2', command=lambda: toggle_preview())
     preview_button.place(relx=0.65, rely=0.75, relwidth=0.2, relheight=0.05)
 
-    live_button = ctk.CTkButton(root, text='Камера', cursor='hand2', command=lambda: webcam_preview())
-    live_button.place(relx=0.40, rely=0.83, relwidth=0.2, relheight=0.05)
+    # Create a button to show the options window for webcam preview
+    options_button = ctk.CTkButton(root, text="Веб-камера", cursor="hand2", command=show_options)
+    options_button.place(relx=0.40, rely=0.83, relwidth=0.2, relheight=0.05)
 
     status_label = ctk.CTkLabel(root, text=None, justify='center')
     status_label.place(relx=0.1, rely=0.9, relwidth=0.8)
@@ -234,20 +236,79 @@ def update_preview(frame_number: int = 0) -> None:
         preview_label.configure(image=image)
         
 
-def webcam_preview():
+# Define a function to create a new window with options for webcam preview
+def show_options():
+    global options_window, resolution_var, device_var
+    options_window = tk.Toplevel(ROOT)  # Use ROOT instead of root
+    options_window.title("Настройки камеры")  # Set the title of the window
+    options_window.geometry("300x200")  # Set the size of the window
+
+    # Create a label for resolution
+    resolution_label = tk.Label(options_window, text="Разрешение:")
+    resolution_label.pack()
+
+    # Create a list of possible resolutions
+    resolutions = ["640x480", "800x600", "1024x768", "1280x720", "1920x1080"]
+
+    # Create a variable to store the selected resolution
+    resolution_var = tk.StringVar(options_window)
+    resolution_var.set(resolutions[0])  # Set the default value
+
+    # Create a dropdown menu for resolution
+    resolution_menu = tk.OptionMenu(options_window, resolution_var, *resolutions)
+    resolution_menu.pack()
+
+    # Create a label for device index
+    device_label = tk.Label(options_window, text="Индекс устройства:")
+    device_label.pack()
+
+    # Create a combobox for device index
+    device_combobox = ttk.Combobox(options_window)
+    device_combobox.pack()
+    device_combobox['values'] = [0, 1, 2]  # You can change this to list available devices
+    device_combobox.current (0)
+
+
+    # Create a button to start the webcam preview with the selected options and pass "webcam" as mode
+    webcam_button = tk.Button(options_window, text="Режим Live камеры", command=lambda: start_preview("webcam", resolution_var.get(), device_combobox.get()))
+    webcam_button.pack()
+
+    # Create a button to start the virtual camera with the selected options and pass "virtual" as mode
+    virtual_cam_button = tk.Button(options_window, text="Режим виртуальной камеры", command=lambda: start_preview("virtual", resolution_var.get(), device_combobox.get()))
+    virtual_cam_button.pack()
+
+def start_preview(mode, resolution, device): # Add arguments for mode, resolution and device
+    global options_window
+
+    # Close the options window
+    options_window.destroy()
+
+    try:
+        width, height = map(int, resolution.split("x"))  # Split the resolution into width and height and convert them to integers
+        device = int(device)  # Convert the device index to integer
+        if mode == "webcam": # If the mode is webcam
+            webcam_preview(width, height, device)  # Call the webcam_preview function with the given arguments
+        elif mode == "virtual": # If the mode is virtual
+            virtual_cam(width, height, device)  # Call the virtual_cam function with the given arguments
+        else: # If the mode is invalid
+            print("Invalid mode") # Print an error message
+    except ValueError:  # If the resolution is not a valid format or the device index is not a valid integer
+        print("Invalid input")  # Print an error message
+
+def webcam_preview(width, height, device):
+    global preview_label, PREVIEW
     if roop.globals.source_path is None:
         # No image selected
+        update_status('Вы не выбрали изображение с лицом для замены')
         return
-    
-    global preview_label, PREVIEW
 
-    cap = cv2.VideoCapture(0)  # Use index for the webcam (adjust the index accordingly if necessary)
+    cap = cv2.VideoCapture(device, cv2.CAP_DSHOW)  # Move this line inside the function
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))      
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # Set the width of the resolution
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # Set the height of the resolution
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)  # Set the selected width of the resolution
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)  # Set the selected height of the resolution
     cap.set(cv2.CAP_PROP_FPS, 25)  # Set the frame rate of the webcam
-    PREVIEW_MAX_HEIGHT = 640
-    PREVIEW_MAX_WIDTH = 480
+    PREVIEW_MAX_HEIGHT = height
+    PREVIEW_MAX_WIDTH = width
 
     preview_label.configure(image=None)  # Reset the preview image before startup
 
@@ -258,25 +319,65 @@ def webcam_preview():
     source_image = None  # Initialize variable for the selected face image
 
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        # Select and save face image only once
-        if source_image is None and roop.globals.source_path:
-            source_image = get_one_face(cv2.imread(roop.globals.source_path))
+            # Select and save face image only once
+            if source_image is None and roop.globals.source_path:
+                source_image = get_one_face(cv2.imread(roop.globals.source_path))
 
-        temp_frame = frame.copy()  #Create a copy of the frame
+            temp_frame = frame.copy()  #Create a copy of the frame
 
-        for frame_processor in frame_processors:
-            temp_frame = frame_processor.process_frame(source_image, temp_frame)
+            for frame_processor in frame_processors:
+                temp_frame = frame_processor.process_frame(source_image, temp_frame)
 
-        image = cv2.cvtColor(temp_frame, cv2.COLOR_BGR2RGB)  # Convert the image to RGB format to display it with Tkinter
-        image = Image.fromarray(image)
-        image = ImageOps.contain(image, (PREVIEW_MAX_WIDTH, PREVIEW_MAX_HEIGHT), Image.LANCZOS)
-        image = ctk.CTkImage(image, size=image.size)
-        preview_label.configure(image=image)
-        ROOT.update()
+            image = cv2.cvtColor(temp_frame, cv2.COLOR_BGR2RGB)  # Convert the image to RGB format to display it with Tkinter
+            image = Image.fromarray(image)
+            image = ImageOps.contain(image, (PREVIEW_MAX_WIDTH, PREVIEW_MAX_HEIGHT), Image.LANCZOS)
+            image = ctk.CTkImage(image, size=image.size)
+            preview_label.configure(image=image)
+            ROOT.update()
 
     cap.release()
     PREVIEW.withdraw()  # Close preview window when loop is finished
+
+def virtual_cam(width, height, device):
+    global PREVIEW
+    if roop.globals.source_path is None:
+        # No image selected
+        update_status('Вы не выбрали изображение с лицом для замены')
+        return
+
+    cap = cv2.VideoCapture(device, cv2.CAP_DSHOW)  # Capture video from the selected device
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))      
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)  # Set the selected width of the resolution
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)  # Set the selected height of the resolution
+    cap.set(cv2.CAP_PROP_FPS, 25)  # Set the frame rate of the webcam
+
+    with pyvirtualcam.Camera(width=width, height=height, fps=25) as cam: # Create a virtual camera with the selected width and height
+        frame_processors = get_frame_processors_modules(roop.globals.frame_processors)
+
+        source_image = None  # Initialize variable for the selected face image
+
+        while True:
+            ret, frame = cap.read()  # Read a frame from webcam
+            if not ret:
+                break
+
+            # Select and save face image only once
+            if source_image is None and roop.globals.source_path:
+                source_image = get_one_face(cv2.imread(roop.globals.source_path))
+
+            temp_frame = frame.copy()  #Create a copy of the frame
+
+            for frame_processor in frame_processors:
+                temp_frame = frame_processor.process_frame(source_image, temp_frame)
+
+            temp_frame = cv2.cvtColor(temp_frame, cv2.COLOR_BGR2RGB) # Convert the frame to RGB format
+            temp_frame = np.flip(temp_frame, axis=1) # Flip the frame horizontally
+            cam.send(temp_frame) # Send the frame to the virtual camera
+            cam.sleep_until_next_frame() # Wait until it's time for the next frame
+
+    cap.release() # Release the webcam
+
