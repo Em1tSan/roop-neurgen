@@ -1,11 +1,13 @@
 ## RU:
-Эта сборка руссифицирована и в ней удален модуль цензуры, поэтому она работает с 18+ контентом. 
+Эта версия является форком [roop-cam](https://github.com/hacksider/roop-cam) я же в свою очередь перевел, добавил ряд твиков, упростил процедуру установки и запуска и сделал портативную версию для запуска в 1 клик на CPU, а также на видеокартах Nvidia и AMD
 
 Если у вас проблемы с установкой, то можете попробовать загрузить портативную сборку.
 
 Скачать портативную сборку можно тут:
 
-[Яндекс Диск](https://disk.yandex.ru/d/QYIbUb7e07enaw)
+[Яндекс Диск](https://disk.yandex.ru/d/7IUx0jAubqK7xQ)
+
+[Моё облако](https://dl.neurochat-gpt.ru/index.php/s/x9q5CM7wNDEdzme)
 
 [Мой телеграм канал](https://t.me/neurogen_news)
 
@@ -28,9 +30,11 @@ https://pikabu.ru/story/prodolzhenie_posta_polzovatel_sozdal_skript_kotoryiy_poz
 - Скачайте CUDNN: https://developer.nvidia.com/downloads/compute/cudnn/secure/8.9.1/local_installers/11.8/cudnn-windows-x86_64-8.9.1.23_cuda11-archive.zip/
 После чего распакуйте архив, откройте папку bin и скопируйте файлы в папку C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin
 
+- Скачайте архив с [roop](https://github.com/Em1tSan/roop-neurogen/archive/refs/heads/roop-cam.zip) и распакйте его
+
 Запуск:
 
-- Внесите под себя правки в файле start_cuda.bat и запустите его. 
+- Внесите под себя правки в файле start_nvidia.bat и запустите его. 
 
 ## Инструкция для AMD и Intel:
 
@@ -44,9 +48,11 @@ https://pikabu.ru/story/prodolzhenie_posta_polzovatel_sozdal_skript_kotoryiy_poz
 Выполните пункты с 1 по 4
 https://pikabu.ru/story/prodolzhenie_posta_polzovatel_sozdal_skript_kotoryiy_pozvolyaet_sozdavat_deepfake_v_odin_klik_kachestvo_kak_po_mne_otlichnoe_i_prevoskhodit_predyidushchie_resheniya_10282774
 
+Скачайте архив с [roop](https://github.com/Em1tSan/roop-neurogen/archive/refs/heads/roop-cam.zip) и распакйте его
+
 Запуск:
 
-- Внесите под себя правки в файле start_dml.bat и запустите его. 
+- Внесите под себя правки в файле start_amd.bat и запустите его. 
 
 ## EN:
 
