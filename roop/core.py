@@ -37,50 +37,58 @@ def parse_args() -> None:
     program.add_argument('-t', '--target', help='select an target image or video', dest='target_path')
     program.add_argument('-o', '--output', help='select output file or directory', dest='output_path')
     program.add_argument('--frame-processor', help='frame processors (choices: face_swapper, face_enhancer, ...)', dest='frame_processor', default=['face_swapper'], nargs='+')
-    program.add_argument('--keep-fps', help='keep original fps', dest='keep_fps', action='store_true', default=False)
-    program.add_argument('--keep-audio', help='keep original audio', dest='keep_audio', action='store_true', default=True)
-    program.add_argument('--keep-frames', help='keep temporary frames', dest='keep_frames', action='store_true', default=False)
-    program.add_argument('--many-faces', help='process every face', dest='many_faces', action='store_true', default=False)
+    program.add_argument('--keep-fps', help='keep target fps', dest='keep_fps', action='store_true')
+    program.add_argument('--keep-frames', help='keep temporary frames', dest='keep_frames', action='store_true')
+    program.add_argument('--skip-audio', help='skip target audio', dest='skip_audio', action='store_true')
+    program.add_argument('--many-faces', help='process every face', dest='many_faces', action='store_true')
+    program.add_argument('--reference-face-position', help='position of the reference face', dest='reference_face_position', type=int, default=0)
+    program.add_argument('--reference-frame-number', help='number of the reference frame', dest='reference_frame_number', type=int, default=0)
+    program.add_argument('--similar-face-distance', help='face distance used for recognition', dest='similar_face_distance', type=float, default=0.85)
     program.add_argument('--video-encoder', help='adjust output video encoder', dest='video_encoder', default='libx264', choices=['libx264', 'libx265', 'libvpx-vp9'])
     program.add_argument('--video-quality', help='adjust output video quality', dest='video_quality', type=int, default=18, choices=range(52), metavar='[0-51]')
     program.add_argument('--max-memory', help='maximum amount of RAM in GB', dest='max_memory', type=int, default=suggest_max_memory())
     program.add_argument('--execution-provider', help='available execution provider (choices: cpu, ...)', dest='execution_provider', default=['cpu'], choices=suggest_execution_providers(), nargs='+')
     program.add_argument('--execution-threads', help='number of execution threads', dest='execution_threads', type=int, default=suggest_execution_threads())
+    program.add_argument('--use_ram', help='use_ram', dest='use_ram', action='store_true')
     program.add_argument('-v', '--version', action='version', version=f'{roop.metadata.name} {roop.metadata.version}')
 
     args = program.parse_args()
 
     roop.globals.source_path = args.source_path
     roop.globals.target_path = args.target_path
-    roop.globals.output_path = normalize_output_path(roop.globals.source_path, roop.globals.target_path, args.output_path)
+    roop.globals.output_path = normalize_output_path(roop.globals.source_path, roop.globals.target_path, args.output_path)  # type: ignore
+    roop.globals.headless = roop.globals.source_path and roop.globals.target_path and roop.globals.output_path
     roop.globals.frame_processors = args.frame_processor
-    roop.globals.headless = args.source_path or args.target_path or args.output_path
     roop.globals.keep_fps = args.keep_fps
-    roop.globals.keep_audio = args.keep_audio
     roop.globals.keep_frames = args.keep_frames
+    roop.globals.skip_audio = args.skip_audio
     roop.globals.many_faces = args.many_faces
+    roop.globals.reference_face_position = args.reference_face_position
+    roop.globals.reference_frame_number = args.reference_frame_number
+    roop.globals.similar_face_distance = args.similar_face_distance
     roop.globals.video_encoder = args.video_encoder
     roop.globals.video_quality = args.video_quality
     roop.globals.max_memory = args.max_memory
     roop.globals.execution_providers = decode_execution_providers(args.execution_provider)
     roop.globals.execution_threads = args.execution_threads
+    roop.globals.use_ram = args.use_ram 
 
     if 'DmlExecutionProvider' in roop.globals.execution_providers:
         sess_options = onnxruntime.SessionOptions()
-        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_PARALLEL
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL 
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         sess_options.intra_op_num_threads = 1
 
     if 'CPUExecutionProvider' in roop.globals.execution_providers:
         sess_options = onnxruntime.SessionOptions()
-        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_PARALLEL
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL 
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         sess_options.intra_op_num_threads = roop.globals.execution_threads
     
     if 'CUDAExecutionProvider' in roop.globals.execution_providers:
 
         sess_options = onnxruntime.SessionOptions()
-        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_PARALLEL
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL 
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         sess_options.intra_op_num_threads = roop.globals.execution_threads
         
@@ -96,7 +104,7 @@ def parse_args() -> None:
     if 'TensorrtExecutionProvider' in roop.globals.execution_providers:
 
         sess_options = onnxruntime.SessionOptions()
-        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_PARALLEL
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL 
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         sess_options.intra_op_num_threads = roop.globals.execution_threads
         
@@ -134,7 +142,7 @@ def suggest_execution_threads() -> int:
         return 1
     if 'ROCMExecutionProvider' in roop.globals.execution_providers:
         return 1
-    return 4
+    return 8
 
 
 def limit_resources() -> None:
@@ -191,6 +199,7 @@ def start() -> None:
             frame_processor.process_image(roop.globals.source_path, roop.globals.output_path, roop.globals.output_path)
             frame_processor.post_process()
             release_resources()
+        # validate
         if is_image(roop.globals.target_path):
             update_status('Processing to image succeed!')
         else:
@@ -209,22 +218,23 @@ def start() -> None:
         release_resources()
     # handles fps
     if roop.globals.keep_fps:
-        update_status('Detecting fps...')
+        update_status('Detecting FPS...')
         fps = detect_fps(roop.globals.target_path)
-        update_status(f'Creating video with {fps} fps...')
+        update_status(f'Creating video with {fps} FPS...')
         create_video(roop.globals.target_path, fps)
     else:
-        update_status('Creating video with 30.0 fps...')
+        update_status('Creating video with 30 FPS...')
         create_video(roop.globals.target_path)
     # handle audio
-    if roop.globals.keep_audio:
+    if roop.globals.skip_audio:
+        move_temp(roop.globals.target_path, roop.globals.output_path)
+        update_status('Skipping audio...')
+    else:
         if roop.globals.keep_fps:
             update_status('Restoring audio...')
         else:
             update_status('Restoring audio might cause issues as fps are not kept...')
         restore_audio(roop.globals.target_path, roop.globals.output_path)
-    else:
-        move_temp(roop.globals.target_path, roop.globals.output_path)
     # clean and validate
     clean_temp(roop.globals.target_path)
     if is_video(roop.globals.target_path):
@@ -236,7 +246,7 @@ def start() -> None:
 def destroy() -> None:
     if roop.globals.target_path:
         clean_temp(roop.globals.target_path)
-    quit()
+    sys.exit()
 
 
 def run() -> None:
