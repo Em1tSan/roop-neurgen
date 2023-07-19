@@ -63,11 +63,13 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
 
     source_label = ctk.CTkLabel(root, text=None)
     source_label.place(relx=0.1, rely=0.1, relwidth=0.3, relheight=0.25)
-
-    target_label = ctk.CTkLabel(root, text=None)
-    target_label.place(relx=0.6, rely=0.1, relwidth=0.3, relheight=0.25)
-    if roop.globals.source_path:
+    if roop.globals.source_path:	
         select_source_path(roop.globals.source_path)
+
+    target_label = ctk.CTkLabel(root, text=None)	
+    target_label.place(relx=0.6, rely=0.1, relwidth=0.3, relheight=0.25)	
+    if roop.globals.target_path:	
+        select_target_path(roop.globals.target_path)
 
     source_button = ctk.CTkButton(root, text='Выберите лицо', cursor='hand2', command=lambda: select_source_path())
     source_button.place(relx=0.1, rely=0.4, relwidth=0.3, relheight=0.1)
@@ -170,7 +172,6 @@ def select_target_path(target_path: Optional[str] = None) -> None:
     if is_image(target_path):
         roop.globals.target_path = target_path  # type: ignore
         RECENT_DIRECTORY_TARGET = os.path.dirname(roop.globals.target_path)
-        reference_face = get_one_face(cv2.imread(roop.globals.target_path))
         image = render_image_preview(roop.globals.target_path, (200, 200))
         target_label.configure(image=image)
     elif is_video(target_path):

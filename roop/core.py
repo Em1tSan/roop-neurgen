@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import sys
 # single thread doubles cuda performance - needs to be set before torch import
@@ -13,9 +11,9 @@ import platform
 import signal
 import shutil
 import argparse
-import torch
 import onnxruntime
 import tensorflow
+import multiprocessing as mp
 
 import roop.globals
 import roop.metadata
@@ -23,8 +21,6 @@ import roop.ui as ui
 from roop.processors.frame.core import get_frame_processors_modules
 from roop.utilities import has_image_extension, is_image, is_video, detect_fps, create_video, extract_frames, get_temp_frame_paths, restore_audio, create_temp, move_temp, clean_temp, normalize_output_path
 
-if 'ROCMExecutionProvider' in roop.globals.execution_providers:
-    del torch
 
 warnings.filterwarnings('ignore', category=FutureWarning, module='insightface')
 warnings.filterwarnings('ignore', category=UserWarning, module='torchvision')
@@ -77,6 +73,7 @@ def parse_args() -> None:
         sess_options = onnxruntime.SessionOptions()
         sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL 
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        num_cpus = mp.cpu_count()-1
         sess_options.intra_op_num_threads = 1
 
     if 'CPUExecutionProvider' in roop.globals.execution_providers:
@@ -130,7 +127,7 @@ def decode_execution_providers(execution_providers: List[str]) -> List[str]:
 def suggest_max_memory() -> int:
     if platform.system().lower() == 'darwin':
         return 4
-    return 16
+    return 8
 
 
 def suggest_execution_providers() -> List[str]:
@@ -138,11 +135,9 @@ def suggest_execution_providers() -> List[str]:
 
 
 def suggest_execution_threads() -> int:
-    if 'DmlExecutionProvider' in roop.globals.execution_providers:
-        return 1
-    if 'ROCMExecutionProvider' in roop.globals.execution_providers:
-        return 1
-    return 8
+    if 'CUDAExecutionProvider' in onnxruntime.get_available_providers():
+        return 8
+    return 1
 
 
 def limit_resources() -> None:
@@ -164,11 +159,6 @@ def limit_resources() -> None:
         else:
             import resource
             resource.setrlimit(resource.RLIMIT_DATA, (memory, memory))
-
-
-def release_resources() -> None:
-    if 'CUDAExecutionProvider' in roop.globals.execution_providers:
-        torch.cuda.empty_cache()
 
 
 def pre_check() -> bool:
@@ -194,12 +184,13 @@ def start() -> None:
     # process image to image
     if has_image_extension(roop.globals.target_path):
         shutil.copy2(roop.globals.target_path, roop.globals.output_path)
+        # process frame
         for frame_processor in get_frame_processors_modules(roop.globals.frame_processors):
             update_status('Progressing...', frame_processor.NAME)
             frame_processor.process_image(roop.globals.source_path, roop.globals.output_path, roop.globals.output_path)
             frame_processor.post_process()
             release_resources()
-        # validate
+        # validate image
         if is_image(roop.globals.target_path):
             update_status('Processing to image succeed!')
         else:
@@ -208,17 +199,23 @@ def start() -> None:
     # process image to videos
     update_status('Creating temp resources...')
     create_temp(roop.globals.target_path)
-    update_status('Extracting frames...')
-    extract_frames(roop.globals.target_path)
+    # extract frames
+    if roop.globals.keep_fps:
+        fps = detect_fps(roop.globals.target_path)
+        update_status(f'Extracting frames with {fps} FPS...')
+        extract_frames(roop.globals.target_path, fps)
+    else:
+        update_status('Extracting frames with 30 FPS...')
+        extract_frames(roop.globals.target_path)
+    # process frame
     temp_frame_paths = get_temp_frame_paths(roop.globals.target_path)
     for frame_processor in get_frame_processors_modules(roop.globals.frame_processors):
         update_status('Progressing...', frame_processor.NAME)
         frame_processor.process_video(roop.globals.source_path, temp_frame_paths)
         frame_processor.post_process()
         release_resources()
-    # handles fps
+    # create video
     if roop.globals.keep_fps:
-        update_status('Detecting FPS...')
         fps = detect_fps(roop.globals.target_path)
         update_status(f'Creating video with {fps} FPS...')
         create_video(roop.globals.target_path, fps)
@@ -235,8 +232,9 @@ def start() -> None:
         else:
             update_status('Restoring audio might cause issues as fps are not kept...')
         restore_audio(roop.globals.target_path, roop.globals.output_path)
-    # clean and validate
+    # clean temp
     clean_temp(roop.globals.target_path)
+    # validate video
     if is_video(roop.globals.target_path):
         update_status('Processing to video succeed!')
     else:
