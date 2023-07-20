@@ -434,5 +434,7 @@ def virtual_cam(width, height, device):
             temp_frame = np.flip(temp_frame, axis=1) # Flip the frame horizontally
             cam.send(temp_frame) # Send the frame to the virtual camera
             cam.sleep_until_next_frame() # Wait until it's time for the next frame
+            ROOT.update()
 
     cap.release() # Release the webcam
+    PREVIEW.withdraw()
